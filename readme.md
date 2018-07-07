@@ -1,5 +1,5 @@
 # rclone Matlab wrapper
-This Matlab class serves as a wrapper to the command line tool [Rclone](https://rclone.org/). Rclone is a command line program to sync files and directories to and from local storage and cloud storage.
+This Matlab function serves as a wrapper to the command line tool [Rclone](https://rclone.org/). Rclone is a command line program to sync files and directories to and from local storage and cloud storage.
 
 Rclone and this wrapper are particularly useful in Matlab for working with large datasets of files stored or backed-up in the cloud.
 
@@ -13,13 +13,12 @@ After installation, check that rclone was successfully added to the system path 
  
 Before using the Matlab wrapper, you must [configure rclone](https://rclone.org/docs/) to access your remote storage.
  
-You can import this git repo as a [submodule](https://blog.github.com/2016-02-01-working-with-submodules/) into your project, just be sure to name the folder `@rclone` so that [Matlab knows that there is a class in the folder](https://www.mathworks.com/help/matlab/matlab_oop/organizing-classes-in-folders.html). 
- 
 ## Usage
 
 The basic usage of rclone to download a directory of data from the cloud is as follows:
 
 ```matlab
+addpath('path/to/rclone_matlab');
 [status,cmdout] = rclone('copy %s %s','remote:path-to/data','local/path/to-data/');
 ```
 

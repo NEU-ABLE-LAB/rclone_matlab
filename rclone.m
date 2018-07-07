@@ -1,4 +1,4 @@
-classdef rclone
+function [status,cmdout,varargout] = rclone(cmdFmt,varargin)
 %RCLONE wrapper for the rclone executable. https://rclone.org/
 %
 % [status,cmdout] = rclone(cmdFmt,A1,...,An) executes the rclone command
@@ -33,11 +33,6 @@ classdef rclone
 %
 %    See also SPRINTF.
 
-methods
-    
-function [status,cmdout,varargout] = rclone(cmdFmt,varargin)
-% Constructor and sole function. See classdef.
-    
 %TODO check if rclone is found
 %TODO handle quoted strings
 
@@ -234,5 +229,3 @@ switch cmdBase
         end
 end
 end % function rclone
-end % methods
-end % class rclone
