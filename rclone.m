@@ -13,8 +13,15 @@ function [status,cmdout,varargout] = rclone(cmdFmt,varargin)
 % [___] = rclone(___,'warn',errID) Throws a warning for the specified
 % error instead of an error. For multiple errIDs, use a cell array.
 %
-% [___,files] = rclone('copy ___',___) Returns a structure with fields
-% 'new' and 'updated' with cell arrays of the file that were copied.
+% [___,files] = rclone('copy ___',___) Returns a structure with following
+% fields indicating which files were copied
+%
+%   .new - A new file was copied from the source to dest
+%
+%   .updated - A updated file from the source was copied to the dest
+%
+%   .dry - Dry run. These files would have been copied without the
+%   `--dry-run` flag.
 %
 %   A verbose flag is always added when using the rclone copy command to
 %   see the files that are copied. If a verbose flag was not provided, then
@@ -145,29 +152,43 @@ else
 end
 
 %% Special output parsing
+% regex for datetime string YYYY/mm/dd HH:MM:SS
+regexTS = ...
+    '[0-9]{4}\/[0-9]{2}\/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}';
+
+% regex for path to file with extension. 
+%   / - directory separator
+%   a-z, 0-9, _-<space> - valid path characters
+%   . - extension separator
+%   a-z, 0-9 - valid extension characters. Starts with a-z
+regexPath = ...
+    '[a-z_\-\s0-9\.^:\/]+?\.[a-z0-9]+';
+        
 switch cmdBase
     case 'copy'
         % 'copy' -- Returns copied files
         
         % Extract new copied files from cmdout
-        tokens = regexpi(cmdout,...
-            ['[0-9]{4}\/[0-9]{2}\/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} ' ...
-            'INFO  : ([a-z_\-\s0-9\.^:\/]+\.[a-z0-9]+): Copied \(new\)'],...
-            'tokens');
-        files.new = cell(length(tokens),1);
-        for k_token = 1:length(tokens)
-            files.new{k_token} = tokens{k_token}{1};
-        end
+        names = regexpi(cmdout,...
+            [regexTS ' INFO  : (?<path>' regexPath ...
+                '): Copied \(new\)'],...
+            'names');
+        files.new = {names.path};
         
         % Extract updated copied files from cmdout
-        tokens = regexpi(cmdout,...
-            ['[0-9]{4}\/[0-9]{2}\/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} '...
-            'INFO  : ([a-z_\-\s0-9\.^:\/]+\.[a-z0-9]+): Copied \(replaced existing\)'],...
-            'tokens');
-        files.updated = cell(length(tokens),1);
-        for k_token = 1:length(tokens)
-            files.updated{k_token} = tokens{k_token}{1};
-        end
+        names = regexpi(cmdout,...
+            [regexTS  ' INFO  : (?<path>' regexPath ...
+                '): Copied \(replaced existing\)'],...
+            'names');
+        files.updated = {names.path};
+        
+        % Extract files copied except for dry run
+        names = regexpi(cmdout,...
+            ['^' regexTS  ' NOTICE: (?<path>' regexPath ...
+                '): Not copying as --dry-run$'],...
+            'lineanchors', ...
+            'names');
+        files.dry = {names.path};
         
         varargout{1} = files;
     
@@ -183,11 +204,12 @@ switch cmdBase
         % rclone returns a row for each file starting with the checksum, 
         % followed by two spaces, then the filename. The whole this is padded 
         % by an extra line.    
-        tokens = regexpi(cmdout, ['([a-f0-9]{32})  '...
-            '([a-z_\-\s0-9\.^:\/]+?\.[a-z0-9]+$)'],...
-            'lineanchors','tokens');
-        fNames = cellfun(@(x)(x{2}),tokens,'uniformoutput',false)';
-        hashes = cellfun(@(x)(x{1}),tokens,'uniformoutput',false)';
+        regexHash = '[a-f0-9]{32}'; % Regex for valid md5 hash
+        names = regexpi(cmdout, ...
+            ['(?<hashes>' regexHash ')  (?<fNames>' regexPath '$)'],...
+            'lineanchors','names');
+        fNames = {names.fNames};
+        hashes = {names.hashes};
         
         % The filenames of 'rclone md5sum' are relative to the path given,
         % if a directory is given as the path. If a file is given as a
