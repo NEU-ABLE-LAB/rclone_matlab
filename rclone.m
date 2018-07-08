@@ -247,7 +247,20 @@ switch cmdBase
         if strcmpi(errID,'rclone:dirNF')
             varargout{1} = [];
         else
-            varargout{1} = jsondecode(cmdout);
+            % Extract json string from other text returned
+            % https://stackoverflow.com/a/19211157/6661759
+            match = regexp(cmdout,'\{(?:[^{}]|(?R))*\}','match'); 
+            json = ['[' strjoin(match,',') ']'];
+            
+            if exist('jsondecode','builtin')==5
+                % Use builtin jsondecoder if available (R2016b+)
+                varargout{1} = jsondecode(json);
+            else
+                % Use opensource jsonload if no builtin avialable
+                addpath([fileparts(which(mfilename)) '/jsonlab']);
+                jsonStruct = loadjson(json)';
+                varargout{1} = [jsonStruct{:}];
+            end
         end
 end
 end % function rclone
